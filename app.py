@@ -1,68 +1,86 @@
-from flask import Flask, render_template, request
-import numpy as np
-import joblib
+"""Flask app serving the trained brain-tumour classifier (pipeline stage 8).
 
+Run:  python app.py   (after `python -m brain_tumor.train`)
+
+The app reads the model's metadata JSON, so the label mapping, decision
+threshold and preprocessing are exactly the ones used in training.
+"""
+import json
 import os
-import numpy as np
+import sys
+from pathlib import Path
 
-# Keras
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-# Flask utils
-from flask import Flask, request, render_template
-from werkzeug.utils import secure_filename
-import tensorflow_hub as hub
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "src"))
 
+from brain_tumor.preprocess import preprocess_bytes  # noqa: E402
 
-# Define a flask app
-app = Flask(__name__)
+MODEL_NAME = os.environ.get("BRAIN_TUMOR_MODEL", "cnn")
+META_PATH = ROOT / "models" / f"brain_tumor_{MODEL_NAME}.json"
+ALLOWED_EXT = {".png", ".jpg", ".jpeg"}
 
-# Model saved with Keras model.save()
-model = load_model(('brain_tumor.h5'), custom_objects={'KerasLayer': hub.KerasLayer})
+app = Flask(__name__)  # uses ./templates and ./static
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 
-
-def model_predict(img_path, model):
-    test_image = image.load_img(img_path, target_size = (224,224))
-    test_image = image.img_to_array(test_image)
-    test_image = test_image / 255
-    test_image = np.expand_dims(test_image, axis=0)
-    result = model.predict(test_image)
-    result
+_model, _meta = None, None
 
 
-    if result <= 0.5:
-        result = "The Person has no Brain Tumor"
-    else:
-        result = "The Person has Brain Tumor"
+def get_model():
+    """Load lazily so the app starts (and /health answers) quickly."""
+    global _model, _meta
+    if _model is None:
+        import tensorflow as tf
 
-    return result
+        _meta = json.loads(META_PATH.read_text())
+        _model = tf.keras.models.load_model(ROOT / "models" / _meta["model_file"])
+    return _model, _meta
 
 
-@app.route('/', methods=['GET'])
+def predict_bytes(data: bytes) -> dict:
+    model, meta = get_model()
+    p = meta["preprocess"]
+    x = preprocess_bytes(data, p["image_size"], p["crop_to_brain"])[None, ...]
+    prob = float(model.predict(x, verbose=0)[0, 0])  # P(tumour)
+    positive = prob >= meta["threshold"]
+    return {
+        "prediction": meta["label_map"]["1"] if positive else meta["label_map"]["0"],
+        "tumor_probability": round(prob, 4),
+        "threshold": meta["threshold"],
+        "message": (
+            "Tumour likely - refer for radiologist review"
+            if positive
+            else "No tumour detected by the model"
+        ),
+    }
+
+
+@app.route("/", methods=["GET"])
 def index():
-    # Main page
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/predict', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        # Get the file from post request
-        f = request.files['file']
-
-        # Save the file to ./uploads
-        basepath = os.path.dirname(__file__)
-        file_path = os.path.join(
-            basepath, 'uploads', secure_filename(f.filename))
-        f.save(file_path)
-
-        # Make prediction
-        preds = model_predict(file_path, model)
-        result = preds
-        return result
-    return None
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify(status="ok", model=MODEL_NAME, model_available=META_PATH.exists())
 
 
-if __name__ == '__main__':
+@app.route("/predict", methods=["GET", "POST"])
+def predict():
+    if request.method == "GET":
+        return redirect(url_for("index"))
+    f = request.files.get("file")
+    if f is None or f.filename == "":
+        return jsonify(error="No file uploaded"), 400
+    if Path(f.filename).suffix.lower() not in ALLOWED_EXT:
+        return jsonify(error="Please upload a .png, .jpg or .jpeg image"), 400
+    try:
+        # Processed in memory: uploaded scans are not written to disk.
+        return jsonify(predict_bytes(f.read()))
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+
+
+if __name__ == "__main__":
     app.run(debug=False)

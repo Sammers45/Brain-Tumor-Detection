@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Raw images are not committed - see data/README.md
+data/raw/
+
+# Uploaded scans are processed in memory; never commit patient images
+uploads/

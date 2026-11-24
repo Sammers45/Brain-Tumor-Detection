@@ -1,0 +1,26 @@
+{
+  "n_images": 253,
+  "unreadable": [],
+  "class_counts": {
+    "0": 98,
+    "1": 155
+  },
+  "exact_duplicate_files": 25,
+  "near_duplicate_groups": 32,
+  "images_in_duplicate_groups": 73,
+  "groups_with_conflicting_labels": [],
+  "split_counts": {
+    "test": {
+      "0": 14,
+      "1": 23
+    },
+    "train": {
+      "0": 70,
+      "1": 110
+    },
+    "val": {
+      "0": 14,
+      "1": 22
+    }
+  }
+}

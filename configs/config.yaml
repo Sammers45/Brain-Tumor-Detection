@@ -1,0 +1,45 @@
+# Single source of truth for the pipeline. Training, evaluation and the Flask
+# app all read from here, so preprocessing can never drift between them.
+
+seed: 42
+
+data:
+  raw_dir: data/raw/brain_tumor_dataset   # contains yes/ and no/
+  # Explicit label map. Never rely on os.listdir() order (it is filesystem-dependent).
+  class_dirs:
+    "no": 0      # no tumour  (negative class)
+    "yes": 1     # tumour     (positive class)
+  class_names: ["no_tumor", "tumor"]
+  manifest_path: data/processed/manifest.csv
+  # Images whose 32x32 thumbnails correlate above this are treated as the same
+  # scan and kept in the same split (prevents train/test leakage).
+  duplicate_corr_threshold: 0.97
+
+split:
+  test_size: 0.15
+  val_size: 0.15          # fraction of the full dataset
+  cv_folds: 5
+
+preprocess:
+  image_size: 128
+  grayscale: true
+  crop_to_brain: true     # crop to the largest contour (removes black borders)
+
+train:
+  model: cnn              # cnn | lstm | transfer
+  epochs: 80
+  batch_size: 16
+  learning_rate: 0.001
+  early_stopping_patience: 15
+  use_class_weights: true
+  augment: true
+
+evaluate:
+  # Threshold is tuned on the validation set, never on the test set.
+  # youden = maximise sensitivity + specificity. For a screening deployment use
+  # e.g. "min_sensitivity:0.95" to cap the miss rate instead.
+  threshold_metric: youden
+
+artifacts:
+  model_dir: models
+  reports_dir: reports

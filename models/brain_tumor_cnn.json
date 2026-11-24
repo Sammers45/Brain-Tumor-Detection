@@ -1,0 +1,70 @@
+{
+  "model_name": "cnn",
+  "model_file": "brain_tumor_cnn.keras",
+  "created_utc": "2026-11-24T21:44:18+00:00",
+  "label_map": {
+    "0": "no_tumor",
+    "1": "tumor"
+  },
+  "positive_class": "tumor",
+  "threshold": 0.63,
+  "preprocess": {
+    "image_size": 128,
+    "grayscale": true,
+    "crop_to_brain": true
+  },
+  "train_size": 180,
+  "val_metrics": {
+    "threshold": 0.63,
+    "roc_auc": 0.7662337662337663,
+    "accuracy": 0.7222222222222222,
+    "balanced_accuracy": 0.7207792207792207,
+    "sensitivity_recall": 0.7272727272727273,
+    "specificity": 0.7142857142857143,
+    "precision": 0.8,
+    "f1": 0.7619047619047619,
+    "confusion_matrix": {
+      "tn": 10,
+      "fp": 4,
+      "fn": 6,
+      "tp": 16
+    },
+    "n": 36
+  },
+  "test_metrics": {
+    "threshold": 0.63,
+    "roc_auc": 0.7515527950310559,
+    "accuracy": 0.7027027027027027,
+    "balanced_accuracy": 0.718944099378882,
+    "sensitivity_recall": 0.6521739130434783,
+    "specificity": 0.7857142857142857,
+    "precision": 0.8333333333333334,
+    "f1": 0.7317073170731707,
+    "confusion_matrix": {
+      "tn": 11,
+      "fp": 3,
+      "fn": 8,
+      "tp": 15
+    },
+    "n": 37,
+    "ci95": {
+      "roc_auc": [
+        0.5499621212121213,
+        0.9242730095990964
+      ],
+      "accuracy": [
+        0.5405405405405406,
+        0.8378378378378378
+      ],
+      "sensitivity_recall": [
+        0.4583333333333333,
+        0.8421052631578947
+      ],
+      "specificity": [
+        0.5384615384615384,
+        1.0
+      ]
+    }
+  },
+  "epochs_trained": 31
+}

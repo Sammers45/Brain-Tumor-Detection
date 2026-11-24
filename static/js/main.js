@@ -42,11 +42,17 @@ $(document).ready(function () {
             processData: false,
             async: true,
             success: function (data) {
-                // Get and display the result
+                // data = {prediction, tumor_probability, threshold, message}
                 $('.loader').hide();
                 $('#result').fadeIn(600);
-                $('#result').text(' Result:  ' + data);
-                console.log('Success!');
+                $('#result').text('Result: ' + data.message +
+                    ' (P(tumour) = ' + (data.tumor_probability * 100).toFixed(1) + '%)');
+            },
+            error: function (xhr) {
+                $('.loader').hide();
+                $('#btn-predict').show();
+                var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Prediction failed';
+                $('#result').fadeIn(600).text('Error: ' + msg);
             },
         });
     });
